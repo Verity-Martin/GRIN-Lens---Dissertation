@@ -1,0 +1,95 @@
+clc;
+clear;
+close all;
+
+filename = '30_9width.txt';
+
+colors = [
+    0.0000 0.0000 1.0000   % 3D  - blue
+    0.0000 0.4470 0.7410   % 5D  - light blue
+    0.0000 0.8500 0.8500   % 7D  - cyan
+    0.4660 0.8740 0.4660   % 9D  - light green
+    1.0000 1.0000 0.0000   % 11D - yellow
+    1.0000 0.4500 0.0000   % 13D - orange
+    1.0000 0.0000 0.0000   % 15D - red
+    0.5500 0.0000 0.0000   % 17D - dark red
+];
+
+T = readtable(filename, ...
+    'FileType','text', ...
+    'CommentStyle','%', ...
+    'Delimiter',' ', ...
+    'MultipleDelimsAsOne',true);
+
+
+x = T{:,1};     
+I = T{:,3};      
+
+
+valid = ~isnan(x) & ~isnan(I);
+
+x = x(valid);
+I = I(valid);
+
+
+[x, order] = sort(x);
+I = I(order);
+
+
+lens_exit = x(1);
+
+
+x_rel = x - lens_exit;
+
+%Normalise intensity
+
+I_norm = I ./ max(I);
+
+
+[Imax, idxMax] = max(I_norm);
+
+
+[Imax, idxMax] = max(I_norm);
+
+
+Imax_actual = max(I);
+
+focal_distance_from_exit = x_rel(idxMax);
+
+focal_x_absolute = x(idxMax);
+
+
+
+
+figure;
+
+plot(x_rel, I_norm, ...
+    'Color',[  0.5500 0.0000 0.0000  ], ...
+    'LineWidth',2);
+
+hold on;
+grid on;
+
+
+plot(focal_distance_from_exit, Imax, ...
+    'ko', ...
+    'MarkerSize',12, ...
+    'LineWidth',2);
+
+%Vertical focal distance line
+
+xline(focal_distance_from_exit, '--', ...
+    'Color',[0.4 0.4 0.4], ...
+    'LineWidth',2);
+
+
+
+xlabel('Distance from lens exit (mm)');
+ylabel('Normalised RMS intensity');
+
+xlim([0 max(x_rel)]);
+ylim([0 1]);
+
+set(gca,'FontSize',18)
+
+box on;
