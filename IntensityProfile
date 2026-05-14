@@ -1,0 +1,99 @@
+clc;
+clear;
+close all;
+
+filename = '30_intensity_profile.txt';
+
+T = readtable(filename, ...
+    'FileType','text', ...
+    'CommentStyle','%', ...
+    'Delimiter',' ', ...
+    'MultipleDelimsAsOne',true);
+
+coord1 = T{:,1};
+coord2 = T{:,2};
+I      = T{:,3};
+
+valid = ~isnan(coord1) & ~isnan(coord2) & ~isnan(I);
+
+coord1 = coord1(valid);
+coord2 = coord2(valid);
+I      = I(valid);
+
+if range(coord2) > range(coord1)
+    y = coord2;
+else
+    y = coord1;
+end
+
+
+[y, order] = sort(y);
+I = I(order);
+
+%Normalise intensity
+
+I_norm = I ./ max(I);
+
+%%FWHM
+
+halfMax = 0.5;
+
+aboveHalf = I_norm >= halfMax;
+idx = find(aboveHalf);
+
+iLeft = idx(1);
+iRight = idx(end);
+
+
+if iLeft > 1
+    y_left = interp1(I_norm(iLeft-1:iLeft), ...
+                     y(iLeft-1:iLeft), ...
+                     halfMax);
+else
+    y_left = y(iLeft);
+end
+
+
+if iRight < length(I_norm)
+    y_right = interp1(I_norm(iRight:iRight+1), ...
+                      y(iRight:iRight+1), ...
+                      halfMax);
+else
+    y_right = y(iRight);
+end
+
+FWHM = abs(y_right - y_left);
+
+
+
+figure;
+hold on;
+grid on;
+box on;
+
+plot(y, I_norm, ...
+    'r-', ...
+    'LineWidth',2.2);
+
+%Half maximum line
+yline(halfMax, '--', ...
+    'Color',[0.4 0.4 0.4], ...
+    'LineWidth',1.5);
+
+%FWHM crossing lines
+xline(y_left, '--', ...
+    'Color',[0.4 0.4 0.4], ...
+    'LineWidth',1.5);
+
+xline(y_right, '--', ...
+    'Color',[0.4 0.4 0.4], ...
+    'LineWidth',1.5);
+
+
+xlabel('y position (mm)');
+ylabel('Normalised RMS intensity');
+
+xlim([-200 200]);
+ylim([0 1]);
+
+set(gca,'FontSize',18);
