@@ -1,0 +1,162 @@
+
+focalFiles = {
+    '30_2width.txt'
+    '30_3width.txt'
+    '30_4width.txt'
+    '30KHz.txt'
+    '30_6width.txt'
+    '30_7width.txt'
+    '30_8width.txt'
+    '30_9width.txt'
+};
+
+profileFiles = {
+    '30hz-2width-profile.txt'
+    '30hz-3width-profile.txt'
+    '30hz_4width_profile.txt'
+    '30_intensity_profile.txt'
+    '30hz_6width_profile.txt'
+    '30hz_7width_profile.txt'
+    '30hz_8width_profile.txt'
+    '30hz_9width_profile.txt'
+};
+
+lensWidth = [3 5 7 9 11 13 15 17]; 
+widthLabels = {'3D','5D','7D','9D','11D','13D','15D','17D'};
+
+
+
+N = length(lensWidth);
+
+MaxIntensity  = nan(N,1);
+FocalDistance = nan(N,1);
+FWHM_Profile  = nan(N,1);
+
+%% Main loop
+for i = 1:N
+
+    %centreline and focal distance
+
+    T = readtable(focalFiles{i}, ...
+        'FileType','text', ...
+        'CommentStyle','%', ...
+        'Delimiter',' ', ...
+        'MultipleDelimsAsOne',true);
+
+    x = T{:,1};
+    I = T{:,3};
+
+    valid = ~isnan(x) & ~isnan(I);
+    x = x(valid);
+    I = I(valid);
+
+    [x, order] = sort(x);
+    I = I(order);
+
+    x_rel = x - x(1);
+
+    [Imax, idxMax] = max(I);
+
+    MaxIntensity(i)  = Imax;
+    FocalDistance(i) = x_rel(idxMax);
+
+    %transverse profile
+
+    P = readtable(profileFiles{i}, ...
+        'FileType','text', ...
+        'CommentStyle','%', ...
+        'Delimiter',' ', ...
+        'MultipleDelimsAsOne',true);
+
+    coord1 = P{:,1};
+    coord2 = P{:,2};
+    Ip     = P{:,3};
+
+    valid = ~isnan(coord1) & ~isnan(coord2) & ~isnan(Ip);
+    coord1 = coord1(valid);
+    coord2 = coord2(valid);
+    Ip     = Ip(valid);
+
+    if range(coord2) > range(coord1)
+        y = coord2;
+    else
+        y = coord1;
+    end
+
+    [y, order] = sort(y);
+    Ip = Ip(order);
+
+    Ip_norm = Ip ./ max(Ip);
+
+    %FWHM
+
+    halfMax = 0.5;
+    aboveHalf = Ip_norm >= halfMax;
+    idx = find(aboveHalf);
+
+    if length(idx) >= 2
+
+        iLeft = idx(1);
+        iRight = idx(end);
+
+        if iLeft > 1
+            y_left = interp1(Ip_norm(iLeft-1:iLeft), y(iLeft-1:iLeft), halfMax);
+        else
+            y_left = y(iLeft);
+        end
+
+        if iRight < length(Ip_norm)
+            y_right = interp1(Ip_norm(iRight:iRight+1), y(iRight:iRight+1), halfMax);
+        else
+            y_right = y(iRight);
+        end
+
+        FWHM_Profile(i) = abs(y_right - y_left);
+
+    else
+        FWHM_Profile(i) = NaN;
+    end
+
+end
+
+
+Results = table( ...
+    widthLabels(:), ...
+    lensWidth(:), ...
+    MaxIntensity(:), ...
+    FocalDistance(:), ...
+    FWHM_Profile(:), ...
+    'VariableNames', ...
+    {'LensWidth_Label','LensWidth_D','MaxIntensity_W_m2','FocalDistance_mm','FWHM_mm'});
+
+disp(Results);
+
+writetable(Results,'Width_Analysis_Results.csv');
+
+
+figure;
+plot(lensWidth, MaxIntensity,'o-','LineWidth',1.6);
+grid on;
+xlabel('Lens width, L/D');
+ylabel('Maximum Intensity (W/m^2)');
+title('Maximum Intensity vs Lens Width');
+xticks(lensWidth);
+xticklabels(widthLabels);
+
+figure;
+plot(lensWidth, FocalDistance,'o-','LineWidth',1.6);
+grid on;
+xlabel('Lens width, L/D');
+ylabel('Focal Distance from Lens Exit (mm)');
+title('Focal Distance vs Lens Width');
+xticks(lensWidth);
+xticklabels(widthLabels);
+
+figure;
+plot(lensWidth, FWHM_Profile,'o-','LineWidth',1.6);
+grid on;
+xlabel('Lens width, L/D');
+ylabel('FWHM (mm)');
+title('FWHM vs Lens Width');
+xticks(lensWidth);
+xticklabels(widthLabels);
